@@ -23,6 +23,8 @@
 // @grant          GM_xmlhttpRequest
 // @grant          GM_getResourceText
 // @grant          GM_registerMenuCommand
+// @grant          unsafeWindow
+
 // ==/UserScript==
 
 if(window.name.substring(0, 18) != 'google_ads_iframe_') {  // don't run on advertisement iframes
@@ -182,6 +184,65 @@ function isLocation(path) {
   return document.location.href.toLowerCase().indexOf(path) == 0;
 }
 
+var uw = (this.unsafeWindow) ? this.unsafeWindow : window;
+/**
+ * Function load user profile and display last user activity date.
+ * This function must be export out of GM script for enable call from onclick attribute.
+ * @param {Element} uact_button action button for hidden, the date of last activity will be inserted after this button
+ * @param {String} profileUrl the url of the user for load last activity date
+ */
+uw.showUserActivityDate = exportFunction(function(uact_button, profileUrl) {
+
+	// Can not replace uact_button -> browser droped click event
+	uact_button.setAttribute("style", "display: none;"); // only hide
+
+	var loading_img = document.createElement("img");
+	loading_img.setAttribute("src", "http://upload.wikimedia.org/wikipedia/commons/4/42/Loading.gif");
+	uact_button.parentNode.appendChild(loading_img);
+	
+	gclh_log("Open user profile throw url=" + profileUrl);
+	
+	// Can not use GM_xmlhttpRequest, need set responseType
+	if( window.XMLHttpRequest ) {
+			
+			var req = new XMLHttpRequest();
+			
+			req.open("GET", profileUrl);
+			req.responseType = "document";
+			req.onload = function () {
+				
+					if( this.status == 200 && this.responseXML != null ) {
+						
+						if( this.responseXML.getElementById ) {
+							
+							var lastVisitElem = this.responseXML.getElementById("ctl00_ContentBody_ProfilePanel1_lblLastVisitDate");
+							if( lastVisitElem ) {
+								
+								var lastVisit = lastVisitElem.textContent.substring(lastVisitElem.textContent.indexOf(",") + 2); // contains e.g.: "Monday, 17 November 2014"
+								var lvel = document.createElement("span");
+								lvel.setAttribute("style", "background-color: #eee; padding: 3px;");
+								lvel.innerHTML = " last activity: " + lastVisit;
+								loading_img.parentNode.replaceChild(lvel, loading_img); // Replace loading image
+							} else {
+								gclh_log("Can not detected last user visit date");
+							}
+							
+						} else {
+							gclh_log("The response of user profile has not function getElementById!");
+						}
+							
+					} else {
+						gclh_log("Can not load user profile. Status=" + this.status);
+					}
+				};
+				
+			req.send();
+			
+		} else {
+			gclh_log("Can not use window.XMLHttpRequest");
+		}
+}, uw);
+
 // define bookmarks
 var bookmarks = new Array();
 
@@ -292,7 +353,7 @@ function gclh_error(modul,err){
 // Neues Speicherformat: Alles in einem Element - macht die Verarbeitung schneller (https://github.com/amshove/GC_little_helper/issues/39)
 var CONFIG = JSON.parse(GM_getValue( "CONFIG", '{}' ));
 
-//var gclhConfigKeys = JSON.parse((CONFIG["gclhConfigKeys"] === undefined?'{"settings_hide_advert_link":null,"settings_hide_line_breaks":null,"settings_hide_spoilerwarning":null,"settings_hide_hint":null,"settings_strike_archived":null,"settings_highlight_usercoords":null,"settings_map_hide_found":null,"settings_map_hide_hidden":null,"settings_map_hide_2":null,"settings_map_hide_9":null,"settings_map_hide_5":null,"settings_map_hide_3":null,"settings_map_hide_6":null,"settings_map_hide_453":null,"settings_map_hide_13":null,"settings_map_hide_1304":null,"settings_map_hide_4":null,"settings_map_hide_11":null,"settings_map_hide_137":null,"settings_map_hide_8":null,"settings_map_hide_1858":null,"settings_show_fav_percentage":null,"settings_show_vip_list":null,"settings_show_owner_vip_list":null,"remove_navi_social":null,"settings_map_layers":null,"settings_log_template_name[0]":null,"settings_custom_bookmark_target[0]":null,"settings_log_template[0]":null,"settings_log_template_name[1]":null,"settings_custom_bookmark_target[1]":null,"settings_log_template[1]":null,"settings_log_template_name[2]":null,"settings_custom_bookmark_target[2]":null,"settings_log_template[2]":null,"settings_log_template_name[3]":null,"settings_custom_bookmark_target[3]":null,"settings_log_template[3]":null,"settings_log_template_name[4]":null,"settings_custom_bookmark_target[4]":null,"settings_log_template[4]":null,"settings_log_template_name[5]":null,"settings_custom_bookmark_target[5]":null,"settings_log_template[5]":null,"settings_log_template_name[6]":null,"settings_custom_bookmark_target[6]":null,"settings_log_template[6]":null,"settings_log_template_name[7]":null,"settings_custom_bookmark_target[7]":null,"settings_log_template[7]":null,"settings_log_template_name[8]":null,"settings_custom_bookmark_target[8]":null,"settings_log_template[8]":null,"settings_log_template_name[9]":null,"settings_custom_bookmark_target[9]":null,"settings_log_template[9]":null,"browser":null,"settings_submit_log_button":null,"settings_log_inline":null,"settings_log_inline_tb":null,"settings_log_inline_pmo4basic":null,"settings_bookmarks_show":null,"settings_bookmarks_on_top":null,"settings_bookmarks_top_menu":null,"settings_bookmarks_search":null,"settings_bookmarks_search_default":null,"settings_redirect_to_map":null,"settings_hide_facebook":null,"settings_hide_socialshare":null,"settings_hideable_souvenirs":null,"settings_hide_disclaimer":null,"settings_hide_cache_notes":null,"settings_hide_empty_cache_notes":null,"settings_breaks_in_cache_notes":null,"settings_show_all_logs":null,"settings_show_all_logs_count":null,"settings_decrypt_hint":null,"settings_show_bbcode":null,"settings_show_datepicker":null,"settings_show_mail":null,"settings_show_mail_coordslink":null,"settings_show_eventday":null,"settings_date_format":null,"settings_show_google_maps":null,"settings_show_log_it":null,"settings_show_nearestuser_profil_link":null,"settings_show_homezone":null,"settings_homezone_radius":null,"settings_homezone_color":null,"settings_show_hillshadow":null,"settings_default_logtype":null,"settings_default_logtype_event":null,"settings_default_tb_logtype":null,"settings_bookmarks_list":null,"settings_bookmarks_list_beta":null,"settings_autovisit":null,"settings_show_thumbnails":null,"settings_imgcaption_on_top":null,"settings_hide_avatar":null,"settings_show_big_gallery":null,"settings_automatic_friend_reset":null,"settings_show_long_vip":null,"settings_load_logs_with_gclh":null,"settings_configsync_enabled":null,"settings_map_add_layer":null,"settings_map_default_layer":null,"settings_hide_map_header":null,"settings_spoiler_strings":null,"settings_replace_log_by_last_log":null,"settings_hide_top_button":null,"settings_show_real_owner":null,"settings_hide_visits_in_profile":null,"settings_log_signature_on_fieldnotes":null,"settings_map_hide_sidebar":null,"settings_hover_image_max_size":null,"settings_vip_show_nofound":null,"settings_use_gclh_layercontrol":null,"settings_bookmarks_title[0]":null,"settings_bookmarks_title[1]":null,"settings_bookmarks_title[2]":null,"settings_bookmarks_title[3]":null,"settings_bookmarks_title[4]":null,"settings_bookmarks_title[5]":null,"settings_bookmarks_title[6]":null,"settings_bookmarks_title[7]":null,"settings_bookmarks_title[8]":null,"settings_bookmarks_title[9]":null,"new_version":null,"last_logtext":null,"HiddenSouvenirs":null,"email_sendaddress":null,"email_mailcopy":null,"settings_log_signature":null,"settings_tb_signature":null,"friends_founds_last":null,"show_box[0]":null,"gclhWasGoogleAlertShown":null,"vips":null,"home_lat":null,"home_lng":null,"uid":null,"settings_new_width":null,"settings_mail_signature":null,"map_width":null,"token":null,"settings_configsync_configid":null}':CONFIG["gclhConfigKeys"]));
+//var gclhConfigKeys = JSON.parse((CONFIG["gclhConfigKeys"] === undefined?'{"settings_hide_advert_link":null,"settings_hide_line_breaks":null,"settings_hide_spoilerwarning":null,"settings_hide_hint":null,"settings_strike_archived":null,"settings_highlight_usercoords":null,"settings_map_hide_found":null,"settings_map_hide_hidden":null,"settings_map_hide_2":null,"settings_map_hide_9":null,"settings_map_hide_5":null,"settings_map_hide_3":null,"settings_map_hide_6":null,"settings_map_hide_453":null,"settings_map_hide_13":null,"settings_map_hide_1304":null,"settings_map_hide_4":null,"settings_map_hide_11":null,"settings_map_hide_137":null,"settings_map_hide_8":null,"settings_map_hide_1858":null,"settings_show_fav_percentage":null,"settings_show_vip_list":null,"settings_show_owner_vip_list":null,"remove_navi_social":null,"settings_map_layers":null,"settings_log_template_name[0]":null,"settings_custom_bookmark_target[0]":null,"settings_log_template[0]":null,"settings_log_template_name[1]":null,"settings_custom_bookmark_target[1]":null,"settings_log_template[1]":null,"settings_log_template_name[2]":null,"settings_custom_bookmark_target[2]":null,"settings_log_template[2]":null,"settings_log_template_name[3]":null,"settings_custom_bookmark_target[3]":null,"settings_log_template[3]":null,"settings_log_template_name[4]":null,"settings_custom_bookmark_target[4]":null,"settings_log_template[4]":null,"settings_log_template_name[5]":null,"settings_custom_bookmark_target[5]":null,"settings_log_template[5]":null,"settings_log_template_name[6]":null,"settings_custom_bookmark_target[6]":null,"settings_log_template[6]":null,"settings_log_template_name[7]":null,"settings_custom_bookmark_target[7]":null,"settings_log_template[7]":null,"settings_log_template_name[8]":null,"settings_custom_bookmark_target[8]":null,"settings_log_template[8]":null,"settings_log_template_name[9]":null,"settings_custom_bookmark_target[9]":null,"settings_log_template[9]":null,"browser":null,"settings_submit_log_button":null,"settings_log_inline":null,"settings_log_inline_tb":null,"settings_log_inline_pmo4basic":null,"settings_bookmarks_show":null,"settings_bookmarks_on_top":null,"settings_bookmarks_top_menu":null,"settings_bookmarks_search":null,"settings_bookmarks_search_default":null,"settings_redirect_to_map":null,"settings_hide_facebook":null,"settings_hide_socialshare":null,"settings_hideable_souvenirs":null,"settings_hide_disclaimer":null,"settings_hide_cache_notes":null,"settings_hide_empty_cache_notes":null,"settings_breaks_in_cache_notes":null,"settings_show_all_logs":null,"settings_show_all_logs_count":null,"settings_decrypt_hint":null,"settings_show_bbcode":null,"settings_show_datepicker":null,"settings_show_mail":null,"settings_show_user_activity_button":null,"settings_show_mail_coordslink":null,"settings_show_eventday":null,"settings_date_format":null,"settings_show_google_maps":null,"settings_show_log_it":null,"settings_show_nearestuser_profil_link":null,"settings_show_homezone":null,"settings_homezone_radius":null,"settings_homezone_color":null,"settings_show_hillshadow":null,"settings_default_logtype":null,"settings_default_logtype_event":null,"settings_default_tb_logtype":null,"settings_bookmarks_list":null,"settings_bookmarks_list_beta":null,"settings_autovisit":null,"settings_show_thumbnails":null,"settings_imgcaption_on_top":null,"settings_hide_avatar":null,"settings_show_big_gallery":null,"settings_automatic_friend_reset":null,"settings_show_long_vip":null,"settings_load_logs_with_gclh":null,"settings_configsync_enabled":null,"settings_map_add_layer":null,"settings_map_default_layer":null,"settings_hide_map_header":null,"settings_spoiler_strings":null,"settings_replace_log_by_last_log":null,"settings_hide_top_button":null,"settings_show_real_owner":null,"settings_hide_visits_in_profile":null,"settings_log_signature_on_fieldnotes":null,"settings_map_hide_sidebar":null,"settings_hover_image_max_size":null,"settings_vip_show_nofound":null,"settings_use_gclh_layercontrol":null,"settings_bookmarks_title[0]":null,"settings_bookmarks_title[1]":null,"settings_bookmarks_title[2]":null,"settings_bookmarks_title[3]":null,"settings_bookmarks_title[4]":null,"settings_bookmarks_title[5]":null,"settings_bookmarks_title[6]":null,"settings_bookmarks_title[7]":null,"settings_bookmarks_title[8]":null,"settings_bookmarks_title[9]":null,"new_version":null,"last_logtext":null,"HiddenSouvenirs":null,"email_sendaddress":null,"email_mailcopy":null,"settings_log_signature":null,"settings_tb_signature":null,"friends_founds_last":null,"show_box[0]":null,"gclhWasGoogleAlertShown":null,"vips":null,"home_lat":null,"home_lng":null,"uid":null,"settings_new_width":null,"settings_mail_signature":null,"map_width":null,"token":null,"settings_configsync_configid":null}':CONFIG["gclhConfigKeys"]));
 var gclhConfigKeysIgnoreForBackup = {"token": true,  "settings_configsync_configid": true, "doPostBack_after_redirect": true, "dbToken": true, "hide_contribute": true};
 
 function setValue( name, value ){
@@ -380,6 +441,8 @@ settings_show_bbcode = getValue("settings_show_bbcode",true);
 settings_show_datepicker = getValue("settings_show_datepicker",true);
 // Settings: Show mail-Link
 settings_show_mail = getValue("settings_show_mail",true);
+// Settings: Show mail-Link
+settings_show_user_activity_button = getValue("settings_show_user_activity_button",true);
 // Settings: Show Coord-Link in Mail
 settings_show_mail_coordslink = getValue("settings_show_mail_coordslink",false);
 // Settings: Show EventDay
@@ -540,7 +603,8 @@ function is_link(name,url){
       if(url.match(/^https?:\/\/www\.geocaching\.com\/seek\/cache_details\.aspx/) || document.location.href.match(/^https?:\/\/www\.geocaching\.com\/geocache\//)) return true;
       else return false;
       break;
-    case "profile":
+    case "profile":Hilfe
+
       if(url.match(/^http:\/\/www\.geocaching\.com\/my\/default\.aspx/) || document.location.href.match(/^http:\/\/www\.geocaching\.com\/my/)  || url.match(/^https:\/\/www\.geocaching\.com\/my\/default\.aspx/) || document.location.href.match(/^https:\/\/www\.geocaching\.com\/my/)) return true;
       else return false;
       break;
@@ -2192,9 +2256,11 @@ try{
   }
 }catch(e){ gclh_error("DatePicker on Logging",e); }
 
-// Show eMail-Link beside Username
+// Show eMail-Link and/or activity button beside Username
 try{
-  if(settings_show_mail && (is_page("cache_listing") || document.location.href.match(/^https?:\/\/www\.geocaching\.com\/(seek\/log|track\/details|track\/log)\.aspx(\?|\?pf\=\&)(guid|wp|tracker|id|LUID|ID|PLogGuid)\=[a-zA-Z0-9-]*/))){
+  if( (settings_show_mail || settings_show_user_activity_button ) 
+		&& ( is_page("cache_listing")
+					|| document.location.href.match(/^https?:\/\/www\.geocaching\.com\/(seek\/log|track\/details|track\/log)\.aspx(\?|\?pf\=\&)(guid|wp|tracker|id|LUID|ID|PLogGuid)\=[a-zA-Z0-9-]*/))) {
     var links = document.getElementsByTagName('a');
 
     // Name des Caches herausfinden
@@ -2244,26 +2310,45 @@ try{
         var guid = links[i].href.match(/https?:\/\/www\.geocaching\.com\/profile\/\?guid=(.*)/);
         guid = guid[1];
 
-        var username = links[i].innerHTML;
+				var username = links[i].innerHTML;
+				var profileUrl = links[i].href;
+
+				if( settings_show_user_activity_button ) {
+
+						var uact_button = document.createElement("input");
+						uact_button.setAttribute("type", "button");
+						uact_button.setAttribute("value", "Activ.");
+						uact_button.setAttribute("title", "Display date of last user activity");
+						uact_button.setAttribute("style", "font-size: xx-small; width: 4em;");
+						uact_button.setAttribute("onclick", "showUserActivityDate(this, '" + profileUrl + "')");
+						
+						var uact_form = document.createElement("form");
+						uact_form.setAttribute("style", "display: inline;");
+						uact_form.appendChild(uact_button);
+						
+						links[i].parentNode.insertBefore(uact_form,links[i].nextSibling);
+						links[i].parentNode.insertBefore(document.createTextNode("   "),links[i].nextSibling);
+				}
+				
+				if( settings_show_mail ) {
   
-        var mail_link = document.createElement("a");
-        var mail_img = document.createElement("img");
-        mail_img.setAttribute("border","0");
-        mail_img.setAttribute("title","Send a mail to this user");
-        mail_img.setAttribute("src",global_mail_icon);
-        mail_link.appendChild(mail_img);
-        mail_link.setAttribute("href",http+"://www.geocaching.com/email/?guid="+guid+"&text=Hi "+username+",%0A%0A"+name);
-  
-//        links[i].parentNode.appendChild(document.createTextNode("   "));
-//        links[i].parentNode.appendChild(mail_link);
-        links[i].parentNode.insertBefore(mail_link,links[i].nextSibling);
-        links[i].parentNode.insertBefore(document.createTextNode("   "),links[i].nextSibling);
+						var mail_link = document.createElement("a");
+						var mail_img = document.createElement("img");
+						mail_img.setAttribute("border","0");
+						mail_img.setAttribute("title","Send a mail to this user");
+						mail_img.setAttribute("src",global_mail_icon);
+						mail_link.appendChild(mail_img);
+						mail_link.setAttribute("href",http+"://www.geocaching.com/email/?guid="+guid+"&text=Hi "+username+",%0A%0A"+name);
+
+						links[i].parentNode.insertBefore(mail_link,links[i].nextSibling);
+						links[i].parentNode.insertBefore(document.createTextNode("   "),links[i].nextSibling);
+				}
       }
     }
     
     var global_cache_name = name;
   }
-}catch(e){ gclh_error("Show Mail-Icon",e); }
+}catch(e){ gclh_error("Show Mail-Icon or User activity button",e); }
 
 // Switch title-color to red, if cache is archived & rename the gallery-link to prevent destroying the layout on to many images
 try{
@@ -5733,6 +5818,7 @@ function gclh_showConfig(){
     html += "</select>"+show_help("If you have changed the date format on gc.com, you have to change it here to. Instead the Day of Week may be wrong.")+"<br/>";
     html += checkbox('settings_show_datepicker', 'Show datepicker') + show_help("With this option a calender icon is shown next to the Date on the logpage. After a click on this icon a calender is shown to select the logdate.") + "<br/>";
     html += checkbox('settings_show_mail', 'Show Mail Link beside Usernames') + show_help("With this option there will be an small mail-Icon beside every username. With this Icon you get directly to the mail-page to mail to this user. If you click it when you are in a Listing, the cachename and GCID will be inserted into the mail-form - you don't have to remember it :) ") + "<br/>";
+		html += checkbox('settings_show_user_activity_button', 'Show User activity beside Usernames') + show_help("With this option there will be an small button for display user activity beside every username.") + "<br/>";
     html += checkbox('settings_show_mail_coordslink', 'Show Coord-Link in Mail') + show_help("This option requires \"Show Mail Link beside Usernames\". With this option the GC/TB-Code in the Mail is displayed as coord.info-link") + "<br/>";
     html += checkbox('settings_show_google_maps', 'Show Link to and from google maps') + show_help("This option makes two thing. First it shows a Link at the top of the second map in the listing. With this Link you get directly to google maps in the area, where the cache is. Second it adds an gc.com-Icon to google-maps to jump from google-maps to gc.com-maps to the same location.") + "<br/>";
     html += checkbox('settings_strike_archived', 'Strike through title of archived/disabled caches') + "<br/>";
@@ -6170,6 +6256,7 @@ function gclh_showConfig(){
       'settings_show_eventday',
       'settings_show_datepicker',
       'settings_show_mail',
+			'settings_show_user_activity_button',
       'settings_show_mail_coordslink',
       'settings_show_google_maps',
       'settings_show_log_it',
